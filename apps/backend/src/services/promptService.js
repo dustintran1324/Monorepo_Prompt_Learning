@@ -36,7 +36,7 @@ async function getPreviousAttemptContext(userId, currentAttempt) {
   }
 }
 
-async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'binary', feedbackLevel = 'llm', technique = 'zero-shot') {
+async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'binary', feedbackLevel = 'llm', technique = 'zero-shot', progressCallback = null) {
   const startTime = Date.now();
 
   // Normalize attempt number to 1, 2, 3 cycle for testing
@@ -46,6 +46,8 @@ async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'b
   // Enhance prompt with selected technique
   const enhancedPrompt = enhancePrompt(prompt, technique);
   console.log(`Applied technique: ${technique}`);
+
+  if (progressCallback) progressCallback({ status: 'loading', message: 'Loading previous attempts...' });
 
   try {
     // Only load previous attempts for normalized attempts > 1
@@ -71,11 +73,15 @@ async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'b
       }
     }
 
+    if (progressCallback) progressCallback({ status: 'classifying', message: 'Running classification on dataset...' });
+
     // Pass enhanced prompt and taskType to simulation
     const simulationResult = await openaiService.simulatePromptOnDataset(
       enhancedPrompt,
       chatHistory,
-      taskType
+      taskType,
+      null,
+      progressCallback
     );
 
     chatHistory.push({
@@ -92,13 +98,27 @@ async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'b
       timestamp: new Date()
     });
 
-    // Feedback logic based on feedbackLevel
-    let feedback = '';
-    let evaluationUsage = {};
-    if (feedbackLevel === 'none') {
-      feedback = ''; // No feedback
+    // Run feedback generation and database save in parallel to reduce latency
+    if (progressCallback) progressCallback({ status: 'feedback', message: 'Generating AI feedback...' });
+
+    let feedbackPromise = Promise.resolve({ feedback: '', usage: {} });
+
+    if (feedbackLevel === 'llm') {
+      // Start feedback generation immediately (don't await yet)
+      const previousContext = normalizedAttempt > 1 ? await getPreviousAttemptContext(userId, normalizedAttempt) : null;
+
+      feedbackPromise = openaiService.evaluateAndProvideFeedback(
+        prompt,
+        formattedReport,
+        chatHistory,
+        normalizedAttempt,
+        taskType,
+        previousContext,
+        technique
+      );
     } else if (feedbackLevel === 'fixed') {
-      feedback = `
+      feedbackPromise = Promise.resolve({
+        feedback: `
 Good prompts should:
 - Include a structured response format with explicit output examples
 - Include example tweets with their labels
@@ -107,27 +127,25 @@ Good prompts should:
 - Tell the model its role as an expert
 - Include labeled examples with reasoning
 - Ask the model to think or reason carefully (but not to include reasoning in output)
-- Guide model reasoning into defined steps`;
-    } else if (feedbackLevel === 'llm') {
-      // Get previous attempt context for better feedback (only for attempt 2+)
-      const previousContext = normalizedAttempt > 1 ? await getPreviousAttemptContext(userId, normalizedAttempt) : null;
+- Guide model reasoning into defined steps`,
+        usage: {}
+      });
+    }
 
-      const evaluationResult = await openaiService.evaluateAndProvideFeedback(
-        prompt,
-        formattedReport,
-        chatHistory,
-        normalizedAttempt,
-        taskType,
-        previousContext
-      );
-      feedback = evaluationResult.feedback;
-      evaluationUsage = evaluationResult.usage;
+    // Wait for feedback to complete
+    const evaluationResult = await feedbackPromise;
+    const feedback = evaluationResult.feedback;
+    const evaluationUsage = evaluationResult.usage;
+
+    if (feedback && feedbackLevel === 'llm') {
       chatHistory.push({
         role: 'assistant',
         content: feedback,
         timestamp: new Date()
       });
     }
+
+    if (progressCallback) progressCallback({ status: 'saving', message: 'Saving results...' });
 
     const processingTime = Date.now() - startTime;
 

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { ApiResponse, AttemptData, SubmissionData, ChatMessage } from '../types';
+import type { ApiResponse, AttemptData, SubmissionData, ChatMessage, DatasetSample } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -41,6 +41,66 @@ export async function submitAttempt(data: SubmissionData): Promise<AttemptData> 
     console.error('Submit attempt error:', error);
     throw new Error(error.response?.data?.error || 'Failed to submit attempt');
   }
+}
+
+export async function submitAttemptSSE(
+  data: SubmissionData,
+  onProgress: (message: string) => void
+): Promise<AttemptData> {
+  return new Promise((resolve, reject) => {
+    const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+    fetch(`${API_BASE_URL}/api/attempts/submit-sse`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    }).then(async (response) => {
+      if (!response.ok) {
+        throw new Error('SSE request failed');
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('No response body');
+      }
+
+      let buffer = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const event = JSON.parse(line.slice(6));
+
+              if (event.type === 'progress') {
+                onProgress(event.message || 'Processing...');
+              } else if (event.type === 'complete') {
+                resolve(event.data);
+                return;
+              } else if (event.type === 'error') {
+                reject(new Error(event.message));
+                return;
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE event:', e);
+            }
+          }
+        }
+      }
+    }).catch(reject);
+  });
 }
 
 export async function getUserAttempts(userId: string): Promise<AttemptData[]> {
@@ -89,6 +149,38 @@ export async function getTechniques(): Promise<PromptingTechnique[]> {
   } catch (error: any) {
     console.error('Get techniques error:', error);
     throw new Error(error.response?.data?.error || 'Failed to get techniques');
+  }
+}
+
+export async function uploadDataset(userId: string, file: File): Promise<any> {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', userId);
+
+    const response = await api.post<ApiResponse<any>>('/api/dataset/upload', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data.data;
+  } catch (error: any) {
+    console.error('Upload dataset error:', error);
+    throw new Error(error.response?.data?.message || 'Failed to upload dataset');
+  }
+}
+
+export async function getDataset(userId: string): Promise<DatasetSample[]> {
+  try {
+    const response = await api.get<ApiResponse<DatasetSample[]>>(`/api/dataset/user/${userId}`);
+    return response.data.data;
+  } catch (error: any) {
+    // Return null if no custom dataset found
+    if (error.response?.status === 404) {
+      return [];
+    }
+    console.error('Get dataset error:', error);
+    throw new Error(error.response?.data?.error || 'Failed to get dataset');
   }
 }
 

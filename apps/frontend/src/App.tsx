@@ -5,13 +5,7 @@ import './App.css';
 function App() {
   return (
     <PromptLearningProvider>
-      <div style={{
-        minHeight: '100vh',
-        background: '#ffffff',
-        padding: '20px'
-      }}>
-        <PromptLearningPlugin />
-      </div>
+      <PromptLearningPlugin />
     </PromptLearningProvider>
   );
 }
