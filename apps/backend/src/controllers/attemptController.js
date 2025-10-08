@@ -2,21 +2,26 @@ const { processPromptAttempt, getUserAttempts, getAttemptChatHistory } = require
 
 const submitAttempt = async (req, res, next) => {
   try {
-    const { userId, prompt, attemptNumber, taskType } = req.body;
-    
+    const { userId, prompt, attemptNumber, attempt, taskType, feedbackLevel } = req.body;
+
+    // Support both 'attemptNumber' and 'attempt' field names for compatibility
+    const attemptNum = attemptNumber || attempt || 1;
+    const feedback = feedbackLevel || 'llm';
+
     console.log('Received attempt submission:', {
       userId,
-      attemptNumber,
+      attemptNumber: attemptNum,
       promptLength: prompt?.length,
-      taskType
+      taskType,
+      feedbackLevel: feedback
     });
 
-    const result = await processPromptAttempt(userId, prompt, attemptNumber, taskType);
-    
+    const result = await processPromptAttempt(userId, prompt, attemptNum, taskType, feedback);
+
     res.status(200).json({
       success: true,
       message: 'Prompt processed successfully',
-      data: result
+      data: result.data
     });
   } catch (error) {
     console.error('Error in submitAttempt:', error);

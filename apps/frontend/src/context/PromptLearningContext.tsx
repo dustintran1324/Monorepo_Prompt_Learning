@@ -33,10 +33,10 @@ function promptLearningReducer(state: PromptLearningState, action: Action): Prom
     case 'SET_ATTEMPTS':
       return { ...state, attempts: action.payload };
     case 'ADD_ATTEMPT':
-      return { 
-        ...state, 
-        attempts: [...state.attempts.filter(a => a.attempt !== action.payload.attempt), action.payload],
-        currentAttempt: action.payload.attempt < 3 ? action.payload.attempt + 1 : 3
+      return {
+        ...state,
+        attempts: [...state.attempts.filter(a => a.attempt !== action.payload.attempt), action.payload]
+        // Don't auto-increment currentAttempt - wait for user to click "Next Attempt"
       };
     case 'SET_CURRENT_ATTEMPT':
       return { ...state, currentAttempt: action.payload };
