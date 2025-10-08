@@ -1,5 +1,6 @@
 const openaiService = require('./openaiService');
 const Attempt = require('../models/Attempt');
+const { enhancePrompt } = require('./promptingTechniques');
 
 function formatClassificationReport(report, merged) {
   const overall = report.overall || {};
@@ -35,12 +36,16 @@ async function getPreviousAttemptContext(userId, currentAttempt) {
   }
 }
 
-async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'binary', feedbackLevel = 'llm') {
+async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'binary', feedbackLevel = 'llm', technique = 'zero-shot') {
   const startTime = Date.now();
 
   // Normalize attempt number to 1, 2, 3 cycle for testing
   const normalizedAttempt = ((attemptNumber - 1) % 3) + 1;
   console.log(`Original attempt: ${attemptNumber}, Normalized attempt: ${normalizedAttempt}`);
+
+  // Enhance prompt with selected technique
+  const enhancedPrompt = enhancePrompt(prompt, technique);
+  console.log(`Applied technique: ${technique}`);
 
   try {
     // Only load previous attempts for normalized attempts > 1
@@ -66,9 +71,9 @@ async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'b
       }
     }
 
-    // Pass taskType to simulation
+    // Pass enhanced prompt and taskType to simulation
     const simulationResult = await openaiService.simulatePromptOnDataset(
-      prompt,
+      enhancedPrompt,
       chatHistory,
       taskType
     );

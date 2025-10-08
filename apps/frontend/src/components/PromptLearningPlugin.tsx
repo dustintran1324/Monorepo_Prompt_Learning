@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { usePromptLearning } from '../context/PromptLearningContext';
-import { submitAttempt, checkHealth } from '../services/api';
+import { submitAttempt, checkHealth, getTechniques, type PromptingTechnique } from '../services/api';
 import type { DatasetSample } from '../types';
 import styles from '../styles/PluginWindow.module.css';
 
@@ -37,9 +37,13 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const [prompt, setPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendHealth, setBackendHealth] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedTechnique, setSelectedTechnique] = useState<string>('zero-shot');
+  const [techniques, setTechniques] = useState<PromptingTechnique[]>([]);
 
   useEffect(() => {
     checkBackendHealth();
+    loadTechniques();
   }, []);
 
   const checkBackendHealth = async () => {
@@ -49,6 +53,15 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     } catch (error) {
       console.error('Backend health check failed:', error);
       setBackendHealth('unhealthy');
+    }
+  };
+
+  const loadTechniques = async () => {
+    try {
+      const loadedTechniques = await getTechniques();
+      setTechniques(loadedTechniques);
+    } catch (error) {
+      console.error('Failed to load techniques:', error);
     }
   };
 
@@ -67,7 +80,8 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
         userId: state.userId,
         prompt: prompt.trim(),
         attemptNumber: state.currentAttempt,
-        taskType: 'binary'
+        taskType: 'binary',
+        technique: selectedTechnique as any
       });
 
       dispatch({ type: 'APPEND_STREAMING_CONTENT', payload: '\n\nGenerating feedback...' });
@@ -92,7 +106,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const isCompleted = state.currentAttempt >= 3 && currentAttemptData;
   const hasCompletedCurrentAttempt = currentAttemptData !== undefined;
   const canMoveToNext = hasCompletedCurrentAttempt && state.currentAttempt < 3;
-  const canMoveToPrevious = state.currentAttempt > 1 && state.attempts.some(a => a.attempt === state.currentAttempt - 1);
+  const canMoveToPrevious = state.currentAttempt > 1;
 
   const handleNextAttempt = () => {
     dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt + 1 });
@@ -103,6 +117,16 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt - 1 });
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // TODO: Implement actual upload after demo
+      console.log('File selected:', file.name);
+      alert(`CSV upload feature coming soon! Selected file: ${file.name}`);
+      setShowUploadModal(false);
+    }
+  };
+
   return (
     <div className={styles.pluginWindow}>
       <header className={styles.header}>
@@ -110,6 +134,9 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
           <h1 className={styles.title}>SMIDGen Prompt Training</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className={styles.uploadButton} onClick={() => setShowUploadModal(true)}>
+            Upload CSV
+          </button>
           <button className={styles.resetButton} onClick={resetProgress}>
             Reset
           </button>
@@ -173,7 +200,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                 </span>
               )}
             </div>
-            
+
             <div className={styles.promptForm}>
               <textarea
                 className={styles.promptInput}
@@ -182,14 +209,41 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                 placeholder="Write your classification prompt here... (minimum 10 characters)\n\nExample: 'Analyze the sentiment of the following text and classify it as either positive or negative based on the overall tone and emotional content.'"
                 disabled={isSubmitting}
               />
-              
-              <button
-                className={styles.submitButton}
-                onClick={handleSubmitPrompt}
-                disabled={!canSubmit}
-              >
-                {isSubmitting ? 'Processing...' : `Submit Attempt ${state.currentAttempt}`}
-              </button>
+
+              <div className={styles.submitRow}>
+                <div className={styles.submitButtonGroup}>
+                  <button
+                    className={styles.submitButton}
+                    onClick={handleSubmitPrompt}
+                    disabled={!canSubmit}
+                  >
+                    {isSubmitting ? 'Processing...' : `Submit Attempt ${state.currentAttempt}`}
+                  </button>
+
+                  {techniques.length > 0 && (
+                    <div className={styles.techniqueButtonsInline}>
+                      <span className={styles.techniqueLabelInline}>with</span>
+                      {techniques.map((tech) => (
+                        <button
+                          key={tech.id}
+                          className={`${styles.techniqueButtonInline} ${selectedTechnique === tech.id ? styles.techniqueButtonInlineActive : ''}`}
+                          onClick={() => setSelectedTechnique(tech.id)}
+                          disabled={isSubmitting}
+                          title={`${tech.description}\n\nBest for: ${tech.bestFor}`}
+                        >
+                          {tech.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {selectedTechnique && techniques.find(t => t.id === selectedTechnique) && (
+                  <p className={styles.techniqueHint}>
+                    💡 {techniques.find(t => t.id === selectedTechnique)?.description}
+                  </p>
+                )}
+              </div>
               
               {state.error && (
                 <div className={styles.errorMessage}>
@@ -288,8 +342,60 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
               Submit your first prompt to see results here.
             </div>
           )}
+
+          {/* Navigation buttons when no current attempt data */}
+          {!currentAttemptData && !state.isStreaming && state.attempts.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px' }}>
+              {canMoveToPrevious && (
+                <button
+                  className={styles.previousButton}
+                  onClick={handlePreviousAttempt}
+                >
+                  View Attempt {state.currentAttempt - 1}
+                </button>
+              )}
+              {canMoveToNext && (
+                <button
+                  className={styles.nextButton}
+                  onClick={handleNextAttempt}
+                >
+                  Continue to Attempt {state.currentAttempt + 1}
+                </button>
+              )}
+            </div>
+          )}
         </section>
       </div>
+
+      {showUploadModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowUploadModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Upload Custom Dataset</h2>
+            <p className={styles.modalDescription}>
+              Upload a CSV file with your own labeled dataset for training. Required columns: <strong>text</strong>, <strong>label</strong>, <strong>id</strong>
+            </p>
+
+            <div className={styles.uploadArea}>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+                id="csv-upload"
+              />
+              <label htmlFor="csv-upload" className={styles.uploadLabel}>
+                Choose CSV File
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button className={styles.cancelButton} onClick={() => setShowUploadModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
