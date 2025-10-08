@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { usePromptLearning } from '../context/PromptLearningContext';
-import { submitAttempt, checkHealth, getTechniques, type PromptingTechnique } from '../services/api';
+import { submitAttemptSSE, checkHealth, getTechniques, uploadDataset, getDataset, type PromptingTechnique } from '../services/api';
 import type { DatasetSample } from '../types';
 import styles from '../styles/PluginWindow.module.css';
 
@@ -40,11 +40,8 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedTechnique, setSelectedTechnique] = useState<string>('zero-shot');
   const [techniques, setTechniques] = useState<PromptingTechnique[]>([]);
-
-  useEffect(() => {
-    checkBackendHealth();
-    loadTechniques();
-  }, []);
+  const [customDataset, setCustomDataset] = useState<DatasetSample[]>([]);
+  const [isUploadingDataset, setIsUploadingDataset] = useState(false);
 
   const checkBackendHealth = async () => {
     try {
@@ -65,32 +62,50 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     }
   };
 
+  const loadCustomDataset = async () => {
+    try {
+      const dataset = await getDataset(state.userId);
+      if (dataset && dataset.length > 0) {
+        setCustomDataset(dataset);
+      }
+    } catch (error) {
+      console.error('Failed to load custom dataset:', error);
+    }
+  };
+
+  useEffect(() => {
+    checkBackendHealth();
+    loadTechniques();
+    loadCustomDataset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSubmitPrompt = async () => {
     if (!prompt.trim() || isSubmitting) return;
 
     setIsSubmitting(true);
     dispatch({ type: 'SET_ERROR', payload: null });
     dispatch({ type: 'SET_STREAMING', payload: true });
-    dispatch({ type: 'SET_STREAMING_CONTENT', payload: 'Processing your prompt...' });
+    dispatch({ type: 'SET_STREAMING_CONTENT', payload: 'Initializing...' });
 
     try {
-      dispatch({ type: 'APPEND_STREAMING_CONTENT', payload: '\n\nRunning classification on dataset...' });
-      
-      const result = await submitAttempt({
-        userId: state.userId,
-        prompt: prompt.trim(),
-        attemptNumber: state.currentAttempt,
-        taskType: 'binary',
-        technique: selectedTechnique as any
-      });
+      const result = await submitAttemptSSE(
+        {
+          userId: state.userId,
+          prompt: prompt.trim(),
+          attemptNumber: state.currentAttempt,
+          taskType: 'binary',
+          technique: selectedTechnique as 'zero-shot' | 'few-shot' | 'chain-of-thought' | 'structured'
+        },
+        (message: string) => {
+          // Real-time progress updates
+          dispatch({ type: 'SET_STREAMING_CONTENT', payload: message });
+        }
+      );
 
-      dispatch({ type: 'APPEND_STREAMING_CONTENT', payload: '\n\nGenerating feedback...' });
-      
-      setTimeout(() => {
-        dispatch({ type: 'SET_STREAMING', payload: false });
-        dispatch({ type: 'ADD_ATTEMPT', payload: result });
-        setPrompt('');
-      }, 1000);
+      dispatch({ type: 'SET_STREAMING', payload: false });
+      dispatch({ type: 'ADD_ATTEMPT', payload: result });
+      setPrompt('');
 
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
@@ -117,13 +132,26 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt - 1 });
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (file) {
-      // TODO: Implement actual upload after demo
-      console.log('File selected:', file.name);
-      alert(`CSV upload feature coming soon! Selected file: ${file.name}`);
+    if (!file) return;
+
+    setIsUploadingDataset(true);
+    try {
+      const result = await uploadDataset(state.userId, file);
+      console.log('Dataset uploaded:', result);
+
+      // Reload the custom dataset
+      await loadCustomDataset();
+
+      alert(`Dataset uploaded successfully! ${result.rowCount} rows loaded.`);
       setShowUploadModal(false);
+    } catch (error) {
+      console.error('Upload error:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Upload failed: ${errorMessage}`);
+    } finally {
+      setIsUploadingDataset(false);
     }
   };
 
@@ -164,17 +192,24 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
             <strong>not_humanitarian:</strong> Tweets that do not provide useful humanitarian information (e.g., unrelated commentary, opinions, or general statements not tied to disaster relief).
           </p>
 
-          <h3 className={styles.sectionTitle}>Dataset Examples with Ground Truth</h3>
+          <h3 className={styles.sectionTitle}>
+            Dataset Examples with Ground Truth
+            {customDataset.length > 0 && (
+              <span style={{ fontSize: '12px', color: '#4a5568', fontWeight: 'normal', marginLeft: '8px' }}>
+                (Custom Dataset: {customDataset.length} items)
+              </span>
+            )}
+          </h3>
           <div className={styles.datasetTableContainer}>
             <table className={styles.datasetTable}>
               <thead>
                 <tr>
-                  <th style={{width: '60%'}}>Tweet Text</th>
+                  <th style={{width: '60%'}}>Text</th>
                   <th style={{width: '40%'}}>Ground Truth</th>
                 </tr>
               </thead>
               <tbody>
-                {SAMPLE_DATASET.map((item, index) => (
+                {(customDataset.length > 0 ? customDataset : SAMPLE_DATASET).map((item, index) => (
                   <tr key={index}>
                     <td>{item.text}</td>
                     <td>
@@ -382,14 +417,19 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                 onChange={handleFileUpload}
                 style={{ display: 'none' }}
                 id="csv-upload"
+                disabled={isUploadingDataset}
               />
-              <label htmlFor="csv-upload" className={styles.uploadLabel}>
-                Choose CSV File
+              <label htmlFor="csv-upload" className={`${styles.uploadLabel} ${isUploadingDataset ? styles.uploadLabelDisabled : ''}`}>
+                {isUploadingDataset ? 'Uploading...' : 'Choose CSV File'}
               </label>
             </div>
 
             <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button className={styles.cancelButton} onClick={() => setShowUploadModal(false)}>
+              <button
+                className={styles.cancelButton}
+                onClick={() => setShowUploadModal(false)}
+                disabled={isUploadingDataset}
+              >
                 Cancel
               </button>
             </div>

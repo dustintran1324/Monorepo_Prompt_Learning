@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const attemptRoutes = require('./routes/attempts');
+const datasetRoutes = require('./routes/dataset');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 
 const app = express();
@@ -49,6 +50,7 @@ app.get('/health', (req, res) => {
 });
 
 app.use('/api/attempts', attemptRoutes);
+app.use('/api/dataset', datasetRoutes);
 
 app.get('/', (req, res) => {
   res.json({
@@ -57,6 +59,7 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       attempts: '/api/attempts',
+      dataset: '/api/dataset',
       docs: 'See README.md for full API documentation'
     }
   });

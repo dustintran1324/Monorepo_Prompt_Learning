@@ -1,10 +1,12 @@
 const express = require('express');
 const { submitAttempt, getAttempts, getChatHistory, getTechniques } = require('../controllers/attemptController');
+const { submitAttemptSSE } = require('../controllers/sseController');
 const { validateAttemptSubmission, validateUserIdParam, validateAttemptNumberParam } = require('../middleware/validation');
 
 const router = express.Router();
 
 router.post('/submit', validateAttemptSubmission, submitAttempt);
+router.post('/submit-sse', validateAttemptSubmission, submitAttemptSSE);
 
 router.get('/user/:userId', validateUserIdParam, getAttempts);
 
