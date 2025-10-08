@@ -360,3 +360,37 @@
   display: inline-block;
   font-size: 11px;
 }
+
+.nextButton {
+  background: #000000;
+  color: white;
+  border: 2px solid #333333;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.nextButton:hover {
+  background: #1a1a1a;
+  border-color: #555555;
+}
+
+.previousButton {
+  background: #ffffff;
+  color: #000000;
+  border: 2px solid #333333;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.previousButton:hover {
+  background: #f5f5f5;
+  border-color: #555555;
+}

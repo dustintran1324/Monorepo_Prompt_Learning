@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { usePromptLearning } from '../context/PromptLearningContext';
 import { submitAttempt, checkHealth } from '../services/api';
 import type { DatasetSample } from '../types';
@@ -88,7 +89,19 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
 
   const currentAttemptData = state.attempts.find(a => a.attempt === state.currentAttempt);
   const canSubmit = prompt.trim().length >= 10 && !isSubmitting && backendHealth === 'healthy';
-  const isCompleted = state.currentAttempt > 3 || (state.currentAttempt === 3 && currentAttemptData);
+  const isCompleted = state.currentAttempt >= 3 && currentAttemptData;
+  const hasCompletedCurrentAttempt = currentAttemptData !== undefined;
+  const canMoveToNext = hasCompletedCurrentAttempt && state.currentAttempt < 3;
+  const canMoveToPrevious = state.currentAttempt > 1 && state.attempts.some(a => a.attempt === state.currentAttempt - 1);
+
+  const handleNextAttempt = () => {
+    dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt + 1 });
+    setPrompt('');
+  };
+
+  const handlePreviousAttempt = () => {
+    dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt - 1 });
+  };
 
   return (
     <div className={styles.pluginWindow}>
@@ -193,6 +206,9 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
           
           {state.isStreaming && (
             <div className={styles.streamingContent}>
+              <div style={{ marginBottom: '12px', fontWeight: '600', color: '#2d3748' }}>
+                Processing... This may take up to 2 minutes.
+              </div>
               {state.streamingContent}
             </div>
           )}
@@ -231,16 +247,37 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
 
               <div className={styles.feedbackCard}>
                 <h3 className={styles.sectionTitle}>AI Feedback</h3>
-                <p className={styles.feedbackText}>{currentAttemptData.feedback}</p>
+                <div className={styles.feedbackText}>
+                  <ReactMarkdown>{currentAttemptData.feedback}</ReactMarkdown>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px' }}>
+                {canMoveToPrevious && (
+                  <button
+                    className={styles.previousButton}
+                    onClick={handlePreviousAttempt}
+                  >
+                    View Attempt {state.currentAttempt - 1}
+                  </button>
+                )}
+                {canMoveToNext && (
+                  <button
+                    className={styles.nextButton}
+                    onClick={handleNextAttempt}
+                  >
+                    Continue to Attempt {state.currentAttempt + 1}
+                  </button>
+                )}
               </div>
             </div>
           )}
 
           {isCompleted && (
             <div className={styles.feedbackCard}>
-              <h3 className={styles.sectionTitle}>🎉 Training Complete!</h3>
+              <h3 className={styles.sectionTitle}>Training Complete!</h3>
               <p className={styles.feedbackText}>
-                You've completed all 3 attempts! Review your results above and use the insights 
+                You've completed all 3 attempts! Review your results above and use the insights
                 you've gained to improve your prompting skills in real AI labeling tasks.
               </p>
             </div>
