@@ -208,3 +208,5 @@ function App() {
 ```
 
 Use as a modal/overlay in existing research tools to provide prompt training before production labeling tasks.
+
+Different prompt techniques, for each user that is using this. Record what is the suggestion they got. 

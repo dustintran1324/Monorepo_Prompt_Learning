@@ -37,6 +37,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const [prompt, setPrompt] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendHealth, setBackendHealth] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
+  const [showUploadModal, setShowUploadModal] = useState(false);
 
   useEffect(() => {
     checkBackendHealth();
@@ -92,7 +93,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const isCompleted = state.currentAttempt >= 3 && currentAttemptData;
   const hasCompletedCurrentAttempt = currentAttemptData !== undefined;
   const canMoveToNext = hasCompletedCurrentAttempt && state.currentAttempt < 3;
-  const canMoveToPrevious = state.currentAttempt > 1 && state.attempts.some(a => a.attempt === state.currentAttempt - 1);
+  const canMoveToPrevious = state.currentAttempt > 1;
 
   const handleNextAttempt = () => {
     dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt + 1 });
@@ -103,6 +104,16 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     dispatch({ type: 'SET_CURRENT_ATTEMPT', payload: state.currentAttempt - 1 });
   };
 
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // TODO: Implement actual upload after demo
+      console.log('File selected:', file.name);
+      alert(`CSV upload feature coming soon! Selected file: ${file.name}`);
+      setShowUploadModal(false);
+    }
+  };
+
   return (
     <div className={styles.pluginWindow}>
       <header className={styles.header}>
@@ -110,6 +121,9 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
           <h1 className={styles.title}>SMIDGen Prompt Training</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button className={styles.uploadButton} onClick={() => setShowUploadModal(true)}>
+            Upload CSV
+          </button>
           <button className={styles.resetButton} onClick={resetProgress}>
             Reset
           </button>
@@ -288,8 +302,60 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
               Submit your first prompt to see results here.
             </div>
           )}
+
+          {/* Navigation buttons when no current attempt data */}
+          {!currentAttemptData && !state.isStreaming && state.attempts.length > 0 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '20px' }}>
+              {canMoveToPrevious && (
+                <button
+                  className={styles.previousButton}
+                  onClick={handlePreviousAttempt}
+                >
+                  View Attempt {state.currentAttempt - 1}
+                </button>
+              )}
+              {canMoveToNext && (
+                <button
+                  className={styles.nextButton}
+                  onClick={handleNextAttempt}
+                >
+                  Continue to Attempt {state.currentAttempt + 1}
+                </button>
+              )}
+            </div>
+          )}
         </section>
       </div>
+
+      {showUploadModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowUploadModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()}>
+            <h2 className={styles.modalTitle}>Upload Custom Dataset</h2>
+            <p className={styles.modalDescription}>
+              Upload a CSV file with your own labeled dataset for training. Required columns: <strong>text</strong>, <strong>label</strong>, <strong>id</strong>
+            </p>
+
+            <div className={styles.uploadArea}>
+              <input
+                type="file"
+                accept=".csv"
+                onChange={handleFileUpload}
+                style={{ display: 'none' }}
+                id="csv-upload"
+              />
+              <label htmlFor="csv-upload" className={styles.uploadLabel}>
+                Choose CSV File
+              </label>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', marginTop: '20px' }}>
+              <button className={styles.cancelButton} onClick={() => setShowUploadModal(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
