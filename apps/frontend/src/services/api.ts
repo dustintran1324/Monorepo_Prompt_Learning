@@ -75,4 +75,21 @@ export async function checkHealth(): Promise<any> {
   }
 }
 
+export interface PromptingTechnique {
+  id: string;
+  name: string;
+  description: string;
+  bestFor: string;
+}
+
+export async function getTechniques(): Promise<PromptingTechnique[]> {
+  try {
+    const response = await api.get<ApiResponse<PromptingTechnique[]>>('/api/attempts/techniques');
+    return response.data.data;
+  } catch (error: any) {
+    console.error('Get techniques error:', error);
+    throw new Error(error.response?.data?.error || 'Failed to get techniques');
+  }
+}
+
 export { api };

@@ -50,16 +50,20 @@ const simulatePromptOnDataset = async (userPrompt, chatHistory = [], taskType = 
 [{"tweet_id": 905739273827004417, "pred": "humanitarian"}, {"tweet_id": 908840266995466240, "pred": "not_humanitarian"}]
 
 CRITICAL RULES:
-- Response must be ONLY the JSON array, no other text
-- Use exactly "humanitarian" or "not_humanitarian" for pred values
+- Response must be ONLY the JSON array, no other text before or after
+- Use EXACTLY "humanitarian" or "not_humanitarian" for pred values (lowercase, underscore)
 - Include ALL tweet_ids from the dataset
-- No explanations, no markdown formatting, no additional text
-- If the user's prompt is unclear, still return the JSON format with your best classification attempt`
+- No explanations, no reasoning, no markdown code blocks, no additional text
+- Do not wrap in \`\`\`json or any other formatting
+- The response should start with [ and end with ]
+- If the user's prompt is unclear, still return the JSON format with your best classification attempt
+
+IMPORTANT: Follow the user's classification instructions carefully. Apply their prompt logic to determine if each tweet is humanitarian or not_humanitarian.`
       },
       ...chatHistory,
       {
         role: 'user',
-        content: `${userPrompt}\nDataset: ${datasetText}`
+        content: `${userPrompt}\n\nDataset to classify:\n${datasetText}`
       }
     ];
 
@@ -106,6 +110,31 @@ CRITICAL RULES:
       if (!Array.isArray(aiPredictions) || aiPredictions.length === 0) {
         throw new Error('No predictions returned');
       }
+
+      // Validate prediction format
+      const invalidPredictions = aiPredictions.filter(p =>
+        !p[idKey] ||
+        !p.pred ||
+        (p.pred !== 'humanitarian' && p.pred !== 'not_humanitarian')
+      );
+
+      if (invalidPredictions.length > 0) {
+        console.warn(`Found ${invalidPredictions.length} predictions with invalid format:`,
+          invalidPredictions.slice(0, 3));
+
+        // Try to normalize label values
+        aiPredictions = aiPredictions.map(p => {
+          if (!p.pred) return p;
+
+          const predLower = p.pred.toLowerCase().trim();
+          if (predLower.includes('humanitarian') && !predLower.includes('not')) {
+            return { ...p, pred: 'humanitarian' };
+          } else if (predLower.includes('not') || predLower.includes('non')) {
+            return { ...p, pred: 'not_humanitarian' };
+          }
+          return p;
+        });
+      }
     } catch (e) {
       console.error('JSON parsing failed:', e.message);
       console.error('AI Raw Output:', completion.choices[0].message.content.substring(0, 200) + '...');
@@ -124,7 +153,7 @@ Original AI response started with: "${completion.choices[0].message.content.subs
       const pred = aiPredictions.find(p => p[idKey] === item[idKey]);
       return {
         ...item,
-        predicted_label: pred ? pred.class_label || pred.pred : null
+        predicted_label: pred ? (pred.pred || pred.class_label) : null
       };
     });
 

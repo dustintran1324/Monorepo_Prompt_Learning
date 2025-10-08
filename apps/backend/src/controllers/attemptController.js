@@ -1,22 +1,25 @@
 const { processPromptAttempt, getUserAttempts, getAttemptChatHistory } = require('../services/promptService');
+const { getAvailableTechniques } = require('../services/promptingTechniques');
 
 const submitAttempt = async (req, res, next) => {
   try {
-    const { userId, prompt, attemptNumber, attempt, taskType, feedbackLevel } = req.body;
+    const { userId, prompt, attemptNumber, attempt, taskType, feedbackLevel, technique } = req.body;
 
     // Support both 'attemptNumber' and 'attempt' field names for compatibility
     const attemptNum = attemptNumber || attempt || 1;
     const feedback = feedbackLevel || 'llm';
+    const promptTechnique = technique || 'zero-shot';
 
     console.log('Received attempt submission:', {
       userId,
       attemptNumber: attemptNum,
       promptLength: prompt?.length,
       taskType,
-      feedbackLevel: feedback
+      feedbackLevel: feedback,
+      technique: promptTechnique
     });
 
-    const result = await processPromptAttempt(userId, prompt, attemptNum, taskType, feedback);
+    const result = await processPromptAttempt(userId, prompt, attemptNum, taskType, feedback, promptTechnique);
 
     res.status(200).json({
       success: true,
@@ -67,8 +70,24 @@ const getChatHistory = async (req, res, next) => {
   }
 };
 
+const getTechniques = async (req, res, next) => {
+  try {
+    const techniques = getAvailableTechniques();
+
+    res.status(200).json({
+      success: true,
+      message: 'Techniques retrieved successfully',
+      data: techniques
+    });
+  } catch (error) {
+    console.error('Error in getTechniques:', error);
+    next(error);
+  }
+};
+
 module.exports = {
   submitAttempt,
   getAttempts,
-  getChatHistory
+  getChatHistory,
+  getTechniques
 };

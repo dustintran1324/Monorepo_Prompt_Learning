@@ -54,6 +54,7 @@ export interface SubmissionData {
   prompt: string;
   attemptNumber: number;
   taskType?: 'binary' | 'multiclass' | 'multilabel';
+  technique?: 'zero-shot' | 'few-shot' | 'chain-of-thought' | 'structured';
 }
 
 export interface DatasetSample {

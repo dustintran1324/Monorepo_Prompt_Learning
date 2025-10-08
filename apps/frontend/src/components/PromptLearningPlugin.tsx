@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { usePromptLearning } from '../context/PromptLearningContext';
-import { submitAttempt, checkHealth } from '../services/api';
+import { submitAttempt, checkHealth, getTechniques, type PromptingTechnique } from '../services/api';
 import type { DatasetSample } from '../types';
 import styles from '../styles/PluginWindow.module.css';
 
@@ -38,9 +38,12 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [backendHealth, setBackendHealth] = useState<'checking' | 'healthy' | 'unhealthy'>('checking');
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [selectedTechnique, setSelectedTechnique] = useState<string>('zero-shot');
+  const [techniques, setTechniques] = useState<PromptingTechnique[]>([]);
 
   useEffect(() => {
     checkBackendHealth();
+    loadTechniques();
   }, []);
 
   const checkBackendHealth = async () => {
@@ -50,6 +53,15 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     } catch (error) {
       console.error('Backend health check failed:', error);
       setBackendHealth('unhealthy');
+    }
+  };
+
+  const loadTechniques = async () => {
+    try {
+      const loadedTechniques = await getTechniques();
+      setTechniques(loadedTechniques);
+    } catch (error) {
+      console.error('Failed to load techniques:', error);
     }
   };
 
@@ -68,7 +80,8 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
         userId: state.userId,
         prompt: prompt.trim(),
         attemptNumber: state.currentAttempt,
-        taskType: 'binary'
+        taskType: 'binary',
+        technique: selectedTechnique as any
       });
 
       dispatch({ type: 'APPEND_STREAMING_CONTENT', payload: '\n\nGenerating feedback...' });
@@ -187,7 +200,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                 </span>
               )}
             </div>
-            
+
             <div className={styles.promptForm}>
               <textarea
                 className={styles.promptInput}
@@ -196,14 +209,41 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                 placeholder="Write your classification prompt here... (minimum 10 characters)\n\nExample: 'Analyze the sentiment of the following text and classify it as either positive or negative based on the overall tone and emotional content.'"
                 disabled={isSubmitting}
               />
-              
-              <button
-                className={styles.submitButton}
-                onClick={handleSubmitPrompt}
-                disabled={!canSubmit}
-              >
-                {isSubmitting ? 'Processing...' : `Submit Attempt ${state.currentAttempt}`}
-              </button>
+
+              <div className={styles.submitRow}>
+                <div className={styles.submitButtonGroup}>
+                  <button
+                    className={styles.submitButton}
+                    onClick={handleSubmitPrompt}
+                    disabled={!canSubmit}
+                  >
+                    {isSubmitting ? 'Processing...' : `Submit Attempt ${state.currentAttempt}`}
+                  </button>
+
+                  {techniques.length > 0 && (
+                    <div className={styles.techniqueButtonsInline}>
+                      <span className={styles.techniqueLabelInline}>with</span>
+                      {techniques.map((tech) => (
+                        <button
+                          key={tech.id}
+                          className={`${styles.techniqueButtonInline} ${selectedTechnique === tech.id ? styles.techniqueButtonInlineActive : ''}`}
+                          onClick={() => setSelectedTechnique(tech.id)}
+                          disabled={isSubmitting}
+                          title={`${tech.description}\n\nBest for: ${tech.bestFor}`}
+                        >
+                          {tech.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {selectedTechnique && techniques.find(t => t.id === selectedTechnique) && (
+                  <p className={styles.techniqueHint}>
+                    💡 {techniques.find(t => t.id === selectedTechnique)?.description}
+                  </p>
+                )}
+              </div>
               
               {state.error && (
                 <div className={styles.errorMessage}>
