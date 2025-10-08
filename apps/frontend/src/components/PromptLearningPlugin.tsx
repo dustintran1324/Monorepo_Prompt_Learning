@@ -5,11 +5,26 @@ import type { DatasetSample } from '../types';
 import styles from '../styles/PluginWindow.module.css';
 
 const SAMPLE_DATASET: DatasetSample[] = [
-  { text: "This movie was absolutely fantastic!", label: "positive" },
-  { text: "I really hated this film", label: "negative" },
-  { text: "The acting was superb and the plot engaging", label: "positive" },
-  { text: "Boring and predictable storyline", label: "negative" },
-  { text: "One of the best movies I've ever seen", label: "positive" }
+  { text: "Miami-Dade orders coastal evacuation as Hurricane Irma threatens CLICK BELOW FOR FULL STORY", label: "humanitarian" },
+  { text: "@joenapoli7 @JohnKasich Look @ Moonbeams law on sex trafficked children! Opens flood gates wide open! #WeRAwake #WeRWatchingU #SaveOurChildren", label: "not_humanitarian" },
+  { text: "Flood warning for Northwestern Marion Country til 9pm.", label: "humanitarian" },
+  { text: "CFB & NFL weekend, Where will Vols/Gators be played, Irma kills Outkick servers", label: "not_humanitarian" },
+  { text: "Calling all nurses! Florida is in desperate need in assistance. #Irma", label: "humanitarian" },
+  { text: "#Lava Details • #Etna #Sicily", label: "not_humanitarian" },
+  { text: "The number to call to donate to Irma victims through the @WBRCnews Salvation Army phone bank is: (205)583-4303", label: "humanitarian" },
+  { text: "I'm not a scientist, but 4 degrees warmer water kicked our butts. Those are my findings.", label: "not_humanitarian" },
+  { text: "Did your HVAC system get damaged by flooding?", label: "humanitarian" },
+  { text: "Great commandments #exo100thwin #BattleofBritainDay #FeelGoodFriday #earthquake #Londra #BREAKING #쟤보지마 #Texans #GrandFinale #yesukraine2017", label: "not_humanitarian" },
+  { text: "We've offered up our West Park Place parking lot to support @FLSERT & @FLGuard in Hurricane #Irma relief efforts. ➡️", label: "humanitarian" },
+  { text: "You are not alone there are plenty of rolling stones. There was a wave in 2014 expect Tsunami in 2019.", label: "not_humanitarian" },
+  { text: "My heart is with everyone affected by #HurricaneIrma. Stay safe out there, guys.", label: "humanitarian" },
+  { text: "Helped Grandpa cut down two dead trees today in preparation for #HurricaneIrma. As you can see, I'm doing the heavy lifting. 💪 ~Maizy", label: "not_humanitarian" },
+  { text: "#Breaking Evacuation Assistance Bus Routes for #NassauCounty Public Shelters #HurricaneIrma", label: "humanitarian" },
+  { text: "@Newsweek The douchebaggery of the man's organization exceeds even that of his callow half-assed administration. Ick. #trump #HurricaneIrma #badtaste", label: "not_humanitarian" },
+  { text: "Buyer Beware: Harvey and Irma damaged cars could enter used car market", label: "humanitarian" },
+  { text: "10 CRAZIEST MINECRAFT STORMS! (TSUNAMI, TORNADOES, METEORS, MORE!)", label: "not_humanitarian" },
+  { text: "RT @AJAYNY: the Caribbean needs our help: Hurricane #Irma Relief - by @anthoknees", label: "humanitarian" },
+  { text: "Yes, 3 days after Mexico withdrew their offer 2 send aid & U cost victims because U were an inconsiderate ASS.", label: "not_humanitarian" }
 ];
 
 interface PromptLearningPluginProps {
@@ -79,8 +94,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
     <div className={styles.pluginWindow}>
       <header className={styles.header}>
         <div>
-          <h1 className={styles.title}>Prompt Learning Assistant</h1>
-          <p className={styles.subtitle}>Learn to write better prompts for AI classification</p>
+          <h1 className={styles.title}>SMIDGen Prompt Training</h1>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button className={styles.resetButton} onClick={resetProgress}>
@@ -99,19 +113,39 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Instructions</h2>
           <p className={styles.instructionText}>
-            Your task is to write prompts that can accurately classify movie reviews as positive or negative. 
-            You have 3 attempts to improve your prompting skills. Study the sample dataset below, then write 
-            a prompt that will help an AI model classify similar text correctly.
+            You will <strong>write a prompt</strong> that instructs the Large-Language-Model (LLM) <strong>GPT-4o-mini</strong> to label Hurricane Irma tweets as either <strong><em>humanitarian</em></strong> or <strong><em>not_humanitarian</em></strong>.
           </p>
-          
-          <h3 className={styles.sectionTitle}>Sample Dataset</h3>
-          <div className={styles.datasetGrid}>
-            {SAMPLE_DATASET.map((item, index) => (
-              <div key={index} className={styles.datasetItem}>
-                <p className={styles.datasetText}>"{item.text}"</p>
-                <p className={styles.datasetLabel}>{item.label}</p>
-              </div>
-            ))}
+
+          <h3 className={styles.sectionTitle}>Category Definitions</h3>
+          <p className={styles.instructionText}>
+            <strong>humanitarian:</strong> Tweets that are useful for humanitarian aid during Hurricane Irma—for example: safety warnings; reports of injured or affected people; rescue, volunteering, or donation requests; descriptions of damage to homes, streets, or infrastructure; blocked roads/bridges; or disaster-area maps.
+          </p>
+          <p className={styles.instructionText}>
+            <strong>not_humanitarian:</strong> Tweets that do not provide useful humanitarian information (e.g., unrelated commentary, opinions, or general statements not tied to disaster relief).
+          </p>
+
+          <h3 className={styles.sectionTitle}>Dataset Examples with Ground Truth</h3>
+          <div className={styles.datasetTableContainer}>
+            <table className={styles.datasetTable}>
+              <thead>
+                <tr>
+                  <th style={{width: '60%'}}>Tweet Text</th>
+                  <th style={{width: '40%'}}>Ground Truth</th>
+                </tr>
+              </thead>
+              <tbody>
+                {SAMPLE_DATASET.map((item, index) => (
+                  <tr key={index}>
+                    <td>{item.text}</td>
+                    <td>
+                      <span className={item.label === 'humanitarian' ? styles.labelHumanitarian : styles.labelNotHumanitarian}>
+                        {item.label}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </section>
 

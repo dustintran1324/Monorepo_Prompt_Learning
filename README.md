@@ -1,31 +1,95 @@
 ## Project Overview
 
-This backend powers an interactive survey tool that helps users improve their prompt-writing skills through 3 structured attempts. Users write prompts, receive AI-generated feedback, and iteratively refine their approach based on automated evaluation against ground truth data.
+This is a **Prompt Learning Plugin** - an interactive educational tool that helps researchers improve their AI prompt-writing skills for disaster/humanitarian tweet classification tasks. It serves as a training environment for a larger research application that mines and labels X/Twitter data for NLP training.
+
+### Parent Application Context
+This plugin supports an existing research tool that:
+- Mines X/Twitter data based on keyword searching and topics (e.g., Hurricane Irma disaster tweets)
+- Presents mined data to researchers for manual NLP labeling
+- Recently added an AI-powered auto-labeler feature
+- **Problem**: Researchers struggle to write effective prompts, limiting AI labeler effectiveness
+
+### Dataset Types
+The system works with real disaster/humanitarian response tweets:
+
+**Binary Classification:**
+- `humanitarian` vs `not_humanitarian`
+
+**Multiclass Classification (9 categories):**
+- `requests_or_urgent_needs` - Calls for help, resources needed
+- `caution_and_advice` - Safety warnings, evacuation notices
+- `displaced_people_and_evacuations` - Shelter info, evacuation status
+- `infrastructure_and_utility_damage` - Power outages, building damage
+- `injured_or_dead_people` - Casualties, medical emergencies
+- `rescue_volunteering_or_donation_effort` - Relief efforts, donations
+- `sympathy_and_support` - Prayers, emotional support
+- `other_relevant_information` - General disaster-related info
+- `not_humanitarian` - Off-topic or irrelevant tweets
+
+**Example Data:** See `apps/backend/data/binary_sample_small.json` and `apps/backend/data/multiclass_test_small.json`
 
 ### How It Works
-1. **User submits a prompt** via Qualtrics frontend
-2. **Backend simulates** running the prompt on a dataset using OpenAI GPT
-3. **Backend evaluates** the output against ground truth and generates feedback
-4. **Chat history builds** across all 3 attempts to provide contextual feedback
-5. **Results stored** in MongoDB for analysis and research
+1. **Researcher views sample dataset** with real disaster tweets (from Hurricane Irma data)
+2. **Researcher writes a classification prompt** attempting to create effective instructions
+3. **Backend simulates** running the prompt on the dataset using OpenAI GPT
+4. **Backend evaluates** predictions against ground truth labels with metrics (accuracy, precision, recall, F1)
+5. **AI generates feedback** with specific improvement suggestions based on performance
+6. **Chat history builds** across all 3 attempts to provide contextual, progressive feedback
+7. **Results stored** in MongoDB for analysis and research
+8. **Skills transfer** - Researcher applies learned techniques to main labeling tool
 
 ---
 
 ## Architecture Overview
 
+### Monorepo Structure
 ```
-backend/
-├── src/
-│   ├── config/          # Database and external service configurations
-│   ├── models/          # MongoDB schemas and data models
-│   ├── routes/          # API endpoint definitions
-│   ├── services/        # Business logic and external integrations
-│   ├── middleware/      # Request processing and validation
-│   └── app.js          # Express application setup
-├── server.js           # Application entry point
-├── .env                # Environment variables
-└── package.json        # Dependencies and scripts
+Monorepo_Prompt_Learning/
+├── apps/
+│   ├── backend/              # Express.js API + MongoDB + OpenAI
+│   │   ├── data/             # Real disaster tweet datasets
+│   │   │   ├── binary_sample_small.json
+│   │   │   └── multiclass_test_small.json
+│   │   ├── src/
+│   │   │   ├── config/       # Database and OpenAI configurations
+│   │   │   ├── models/       # MongoDB schemas (Attempt)
+│   │   │   ├── routes/       # API endpoints
+│   │   │   ├── services/     # Business logic (OpenAI, evaluation)
+│   │   │   ├── controllers/  # Request handlers
+│   │   │   ├── middleware/   # Validation and error handling
+│   │   │   └── app.js        # Express setup
+│   │   ├── server.js         # Application entry point
+│   │   └── .env              # Environment variables
+│   │
+│   └── frontend/             # React + TypeScript + Vite
+│       ├── src/
+│       │   ├── components/   # PromptLearningPlugin (main UI)
+│       │   ├── context/      # State management (Context API)
+│       │   ├── services/     # API client (Axios)
+│       │   ├── types/        # TypeScript interfaces
+│       │   ├── styles/       # CSS modules
+│       │   ├── utils/        # Local storage helpers
+│       │   └── hooks/        # Custom React hooks
+│       └── vite.config.ts    # Vite configuration
+│
+├── packages/                 # Shared utilities (future)
+├── shared/                   # Shared code (future)
+└── package.json              # Workspace configuration
 ```
+
+### Tech Stack
+**Backend:**
+- Node.js + Express.js
+- MongoDB (Mongoose) - stores attempts, chat history, metrics
+- OpenAI API (GPT-4) - prompt simulation & feedback generation
+- express-validator - input validation
+
+**Frontend:**
+- React 19 + TypeScript
+- Vite (build tool)
+- Axios (API client)
+- Context API (state management)
+- CSS Modules (styling)
 ---
 ### 🔧 **Configuration Files**
 
@@ -157,15 +221,25 @@ NODE_ENV=development                         # Environment mode
 
 ### Running the Application
 ```bash
-# Development mode (auto-restart on changes)
+# Run both frontend and backend concurrently
 npm run dev
 
-# Production mode
+# Run backend only
+npm run dev:backend
+
+# Run frontend only
+npm run dev:frontend
+
+# Build both apps
+npm run build
+
+# Production mode (backend)
 npm start
 ```
 
 ### Health Check
-Visit `http://localhost:3000/health` to verify the server is running.
+- Backend: `http://localhost:3000/health`
+- Frontend: `http://localhost:5173` (default Vite port)
 
 ---
 
@@ -264,6 +338,29 @@ curl -X POST http://localhost:3000/api/attempts \
 
 ---
 
+## Integration with Parent Application
+
+### Plugin Embedding Strategy
+- Plugin designed as standalone React component (`<PromptLearningPlugin />`)
+- Can be embedded into existing Twitter labeling UI as modal/overlay
+- Isolated state management (doesn't interfere with parent app)
+- Optional `onClose` prop for parent app control
+- Provides learning environment before researchers use main AI labeler
+
+### Current Status
+✅ **Completed:**
+- Full backend API with OpenAI integration
+- Complete frontend UI with performance metrics dashboard
+- Real disaster tweet datasets loaded (binary & multiclass)
+- State management with Context API
+- Local storage persistence
+- Backend health monitoring
+
+📍 **In Progress:**
+- Syncing frontend sample dataset with real disaster tweets
+- Task type selection UI (binary vs multiclass)
+- Plugin embedding into parent application
+
 ## Future Enhancements
 
 ### Extensibility Features Built In
@@ -271,13 +368,17 @@ curl -X POST http://localhost:3000/api/attempts \
 - **Modular prompt service**: Easy to add new evaluation methods
 - **Comprehensive metadata**: Ready for detailed analytics
 - **Chat history preservation**: Supports complex conversation flows
+- **Multiple task types**: Binary and multiclass classification support
 
 ### Suggested Improvements
+- Add task type selector in UI (binary vs multiclass)
+- Show real-time prediction examples during evaluation
+- Add comparison view across all 3 attempts
+- Export learning progress reports
 - Add Redis caching for frequently accessed data
-- Implement WebSocket for real-time feedback
+- Implement WebSocket for real-time feedback streaming
 - Add comprehensive test suite
-- Create admin dashboard for monitoring
-- Implement user authentication system
+- Create admin dashboard for monitoring researcher progress
 
 ---
 
