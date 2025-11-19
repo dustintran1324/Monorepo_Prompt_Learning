@@ -1,0 +1,21 @@
+id,text,label
+1,"I absolutely love this new phone! Best purchase ever.",positive
+2,"Terrible customer service. Will never buy again.",negative
+3,"The product is okay, nothing special.",neutral
+4,"Amazing quality and fast shipping!",positive
+5,"Waste of money. Broke after one week.",negative
+6,"It works as expected. Does the job.",neutral
+7,"Best experience I've had with any company!",positive
+8,"Disappointed with the quality. Expected better.",negative
+9,"Average product for the price.",neutral
+10,"Highly recommend! Exceeded my expectations.",positive
+11,"The worst purchase I've made this year.",negative
+12,"Decent value. Would consider buying again.",neutral
+13,"Customer support was incredibly helpful!",positive
+14,"Product arrived damaged. Very frustrating.",negative
+15,"It's fine. Nothing to complain about.",neutral
+16,"Absolutely fantastic! Five stars!",positive
+17,"Do not buy this. Complete scam.",negative
+18,"Meets basic requirements. That's about it.",neutral
+19,"Love everything about this product!",positive
+20,"Poor quality materials. Very cheap feeling.",negative
