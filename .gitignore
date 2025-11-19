@@ -56,6 +56,8 @@ Thumbs.db
 # Compiled TypeScript
 *.tsbuildinfo
 
-# Migration guides (temporary)
+# Migration guides and documentation (except README)
+*.md
+!README.md
 FRONTEND_MIGRATION_GUIDE
 MONOREPO_SETUP_GUIDE

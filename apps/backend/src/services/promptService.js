@@ -1,6 +1,6 @@
 const openaiService = require('./openaiService');
 const Attempt = require('../models/Attempt');
-const { enhancePrompt } = require('./promptingTechniques');
+const { prepareForClassification } = require('./promptingTechniques');
 
 function formatClassificationReport(report, merged) {
   const overall = report.overall || {};
@@ -43,9 +43,9 @@ async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'b
   const normalizedAttempt = ((attemptNumber - 1) % 3) + 1;
   console.log(`Original attempt: ${attemptNumber}, Normalized attempt: ${normalizedAttempt}`);
 
-  // Enhance prompt with selected technique
-  const enhancedPrompt = enhancePrompt(prompt, technique);
-  console.log(`Applied technique: ${technique}`);
+  // Prepare user prompt for classification (only adds output format, no enhancements)
+  const classificationPrompt = prepareForClassification(prompt);
+  console.log(`Technique for feedback: ${technique}`);
 
   if (progressCallback) progressCallback({ status: 'loading', message: 'Loading previous attempts...' });
 
@@ -75,9 +75,9 @@ async function processPromptAttempt(userId, prompt, attemptNumber, taskType = 'b
 
     if (progressCallback) progressCallback({ status: 'classifying', message: 'Running classification on dataset...' });
 
-    // Pass enhanced prompt and taskType to simulation
+    // Pass user's prompt (with output format only) to classification
     const simulationResult = await openaiService.simulatePromptOnDataset(
-      enhancedPrompt,
+      classificationPrompt,
       chatHistory,
       taskType,
       null,

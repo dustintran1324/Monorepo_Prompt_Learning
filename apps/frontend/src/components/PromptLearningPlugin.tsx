@@ -443,7 +443,7 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
           )}
 
           {isCompleted && (
-            <div className={styles.feedbackCard}>
+            <div className={styles.feedbackCard} style={{ marginTop: '20px' }}>
               <h3 className={styles.sectionTitle}>Training Complete!</h3>
               <p className={styles.feedbackText}>
                 You've completed all 3 attempts! Review your results above and use the insights
