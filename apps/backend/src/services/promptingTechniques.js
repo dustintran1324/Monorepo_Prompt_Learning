@@ -28,97 +28,17 @@ const FEW_SHOT_EXAMPLES = [
 ];
 
 /**
- * Enhances user prompt with zero-shot technique
- * Adds role definition and clear output format
+ * Prepares user prompt for classification
+ * Only adds minimal output format - NO technique enhancements
+ * The user's prompt is their complete instruction to the LLM
  */
-function applyZeroShot(userPrompt) {
-  return `You are an expert disaster response classifier.
-
-${userPrompt}
+function prepareForClassification(userPrompt) {
+  return `${userPrompt}
 
 Output format: Return ONLY a JSON array with this structure:
-[{"tweet_id": <id>, "pred": "humanitarian" or "not_humanitarian"}]`;
-}
+[{"tweet_id": <id>, "pred": "<label>"}]
 
-/**
- * Enhances user prompt with few-shot examples
- * Provides labeled examples before the task
- */
-function applyFewShot(userPrompt) {
-  const examplesText = FEW_SHOT_EXAMPLES.map(ex =>
-    `Tweet: "${ex.tweet_text}"\nLabel: ${ex.pred}\nReasoning: ${ex.reasoning}`
-  ).join('\n\n');
-
-  return `You are an expert disaster response classifier.
-
-Here are some examples of correctly classified tweets:
-
-${examplesText}
-
-Now apply the same classification logic:
-${userPrompt}
-
-Output format: Return ONLY a JSON array with this structure:
-[{"tweet_id": <id>, "pred": "humanitarian" or "not_humanitarian"}]`;
-}
-
-/**
- * Enhances user prompt with chain-of-thought reasoning
- * Asks model to think step-by-step but output only classification
- */
-function applyChainOfThought(userPrompt) {
-  return `You are an expert disaster response classifier.
-
-${userPrompt}
-
-For each tweet, think through:
-1. Does it provide actionable disaster relief information?
-2. Does it request or offer help/aid/resources?
-3. Does it contain safety warnings or damage reports?
-4. Or is it just commentary, opinion, or unrelated content?
-
-Based on your reasoning, classify each tweet. Output ONLY the final JSON array (no reasoning in output):
-[{"tweet_id": <id>, "pred": "humanitarian" or "not_humanitarian"}]`;
-}
-
-/**
- * Enhances user prompt with structured reasoning
- * Breaks down the classification into clear steps
- */
-function applyStructuredReasoning(userPrompt) {
-  return `You are an expert disaster response classifier. Follow this systematic approach:
-
-STEP 1: Read the user's classification criteria
-${userPrompt}
-
-STEP 2: For each tweet, evaluate:
-- Primary intent: Information sharing, help request, aid offer, or commentary?
-- Action orientation: Does it enable disaster response actions?
-- Humanitarian value: Useful for relief efforts?
-
-STEP 3: Apply binary classification
-- "humanitarian" = Useful for disaster relief (warnings, damage reports, aid requests/offers, evacuation info)
-- "not_humanitarian" = Everything else (opinions, unrelated content, casual commentary)
-
-Output ONLY the final JSON array (no reasoning in output):
-[{"tweet_id": <id>, "pred": "humanitarian" or "not_humanitarian"}]`;
-}
-
-/**
- * Applies the selected prompting technique to the user's prompt
- */
-function enhancePrompt(userPrompt, technique = 'zero-shot') {
-  switch (technique) {
-    case 'few-shot':
-      return applyFewShot(userPrompt);
-    case 'chain-of-thought':
-      return applyChainOfThought(userPrompt);
-    case 'structured':
-      return applyStructuredReasoning(userPrompt);
-    case 'zero-shot':
-    default:
-      return applyZeroShot(userPrompt);
-  }
+Do not include any other text, just the JSON array.`;
 }
 
 /**
@@ -154,7 +74,7 @@ function getAvailableTechniques() {
 }
 
 module.exports = {
-  enhancePrompt,
+  prepareForClassification,
   getAvailableTechniques,
   FEW_SHOT_EXAMPLES
 };
