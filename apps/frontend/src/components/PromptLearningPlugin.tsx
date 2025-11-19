@@ -204,24 +204,77 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
         {/* Instructions Section */}
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Instructions</h2>
-          <p className={styles.instructionText}>
-            You will <strong>write a prompt</strong> that instructs the Large-Language-Model (LLM) <strong>GPT-4o-mini</strong> to label Hurricane Irma tweets as either <strong><em>humanitarian</em></strong> or <strong><em>not_humanitarian</em></strong>.
-          </p>
+          {customDataset.length > 0 ? (
+            <>
+              <p className={styles.instructionText}>
+                You will <strong>write a prompt</strong> that instructs the Large-Language-Model (LLM) <strong>GPT-4o-mini</strong> to classify your text data into the following categories.
+              </p>
 
-          <h3 className={styles.sectionTitle}>Category Definitions</h3>
-          <p className={styles.instructionText}>
-            <strong>humanitarian:</strong> Tweets that are useful for humanitarian aid during Hurricane Irma—for example: safety warnings; reports of injured or affected people; rescue, volunteering, or donation requests; descriptions of damage to homes, streets, or infrastructure; blocked roads/bridges; or disaster-area maps.
-          </p>
-          <p className={styles.instructionText}>
-            <strong>not_humanitarian:</strong> Tweets that do not provide useful humanitarian information (e.g., unrelated commentary, opinions, or general statements not tied to disaster relief).
-          </p>
+              <h3 className={styles.sectionTitle}>Detected Labels</h3>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
+                {uniqueLabels.map((label) => {
+                  const color = getLabelColor(label, uniqueLabels);
+                  return (
+                    <span
+                      key={label}
+                      style={{
+                        backgroundColor: color.bg,
+                        color: color.text,
+                        fontWeight: 'bold',
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        fontSize: '12px'
+                      }}
+                    >
+                      {label}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className={styles.instructionText} style={{ fontSize: '12px', color: '#718096' }}>
+                Your prompt should clearly define how to classify text into these {uniqueLabels.length} categories.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className={styles.instructionText}>
+                You will <strong>write a prompt</strong> that instructs the Large-Language-Model (LLM) <strong>GPT-4o-mini</strong> to label Hurricane Irma tweets as either <strong><em>humanitarian</em></strong> or <strong><em>not_humanitarian</em></strong>.
+              </p>
+
+              <h3 className={styles.sectionTitle}>Category Definitions</h3>
+              <p className={styles.instructionText}>
+                <strong>humanitarian:</strong> Tweets that are useful for humanitarian aid during Hurricane Irma—for example: safety warnings; reports of injured or affected people; rescue, volunteering, or donation requests; descriptions of damage to homes, streets, or infrastructure; blocked roads/bridges; or disaster-area maps.
+              </p>
+              <p className={styles.instructionText}>
+                <strong>not_humanitarian:</strong> Tweets that do not provide useful humanitarian information (e.g., unrelated commentary, opinions, or general statements not tied to disaster relief).
+              </p>
+            </>
+          )}
 
           <h3 className={styles.sectionTitle}>
             Dataset Examples with Ground Truth
             {customDataset.length > 0 && (
-              <span style={{ fontSize: '12px', color: '#4a5568', fontWeight: 'normal', marginLeft: '8px' }}>
-                (Custom Dataset: {customDataset.length} items)
-              </span>
+              <>
+                <span style={{ fontSize: '12px', color: '#4a5568', fontWeight: 'normal', marginLeft: '8px' }}>
+                  (Custom Dataset: {customDataset.length} items)
+                </span>
+                <button
+                  onClick={() => setCustomDataset([])}
+                  style={{
+                    marginLeft: '12px',
+                    padding: '4px 8px',
+                    fontSize: '11px',
+                    background: '#f3f4f6',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    color: '#4b5563',
+                    fontWeight: 'normal'
+                  }}
+                >
+                  Revert to Default
+                </button>
+              </>
             )}
           </h3>
           <div className={styles.datasetTableContainer}>
@@ -305,11 +358,6 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                   )}
                 </div>
 
-                {selectedTechnique && techniques.find(t => t.id === selectedTechnique) && (
-                  <p className={styles.techniqueHint}>
-                    💡 {techniques.find(t => t.id === selectedTechnique)?.description}
-                  </p>
-                )}
               </div>
               
               {state.error && (
