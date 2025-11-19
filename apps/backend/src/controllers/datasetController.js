@@ -1,24 +1,9 @@
 const multer = require('multer');
 const Papa = require('papaparse');
-const fs = require('fs').promises;
-const path = require('path');
+const Dataset = require('../models/Dataset');
 
-// Configure multer for file upload
-const storage = multer.diskStorage({
-  destination: async (req, file, cb) => {
-    const uploadDir = path.join(__dirname, '../../uploads');
-    try {
-      await fs.mkdir(uploadDir, { recursive: true });
-      cb(null, uploadDir);
-    } catch (error) {
-      cb(error);
-    }
-  },
-  filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${file.originalname}`;
-    cb(null, uniqueName);
-  }
-});
+// Configure multer for memory storage (no file system needed)
+const storage = multer.memoryStorage();
 
 const upload = multer({
   storage,
@@ -51,8 +36,8 @@ const uploadDataset = async (req, res, next) => {
       });
     }
 
-    // Read the uploaded CSV file
-    const fileContent = await fs.readFile(req.file.path, 'utf-8');
+    // Read the uploaded CSV from memory buffer
+    const fileContent = req.file.buffer.toString('utf-8');
 
     // Parse CSV
     const parseResult = Papa.parse(fileContent, {
@@ -99,19 +84,31 @@ const uploadDataset = async (req, res, next) => {
       label: row.label || row.class_label
     }));
 
-    // Store dataset in memory or database (for now, we'll store in a JSON file)
-    const datasetPath = path.join(__dirname, '../../uploads', `dataset-${userId}.json`);
-    await fs.writeFile(datasetPath, JSON.stringify(normalizedData, null, 2));
+    // Get unique labels for metadata
+    const uniqueLabels = [...new Set(normalizedData.map(row => row.label))];
 
-    // Clean up uploaded CSV
-    await fs.unlink(req.file.path);
+    // Store dataset in MongoDB (upsert - update if exists, create if not)
+    await Dataset.findOneAndUpdate(
+      { userId },
+      {
+        userId,
+        samples: normalizedData,
+        metadata: {
+          rowCount: normalizedData.length,
+          originalFilename: req.file.originalname,
+          labels: uniqueLabels
+        }
+      },
+      { upsert: true, new: true }
+    );
 
     res.status(200).json({
       success: true,
       message: 'Dataset uploaded successfully',
       data: {
         rowCount: normalizedData.length,
-        sampleData: normalizedData.slice(0, 10)
+        labels: uniqueLabels,
+        sampleData: normalizedData.slice(0, 5)
       }
     });
   } catch (error) {
@@ -124,26 +121,46 @@ const getDataset = async (req, res, next) => {
   try {
     const { userId } = req.params;
 
-    const datasetPath = path.join(__dirname, '../../uploads', `dataset-${userId}.json`);
+    const dataset = await Dataset.findOne({ userId });
 
-    try {
-      const fileContent = await fs.readFile(datasetPath, 'utf-8');
-      const dataset = JSON.parse(fileContent);
-
-      res.status(200).json({
-        success: true,
-        message: 'Dataset retrieved successfully',
-        data: dataset
-      });
-    } catch (error) {
-      // No custom dataset found, return default
-      res.status(404).json({
+    if (!dataset) {
+      return res.status(404).json({
         success: false,
         message: 'No custom dataset found'
       });
     }
+
+    res.status(200).json({
+      success: true,
+      message: 'Dataset retrieved successfully',
+      data: dataset.samples,
+      metadata: dataset.metadata
+    });
   } catch (error) {
     console.error('Error in getDataset:', error);
+    next(error);
+  }
+};
+
+const deleteDataset = async (req, res, next) => {
+  try {
+    const { userId } = req.params;
+
+    const result = await Dataset.findOneAndDelete({ userId });
+
+    if (!result) {
+      return res.status(404).json({
+        success: false,
+        message: 'No dataset found to delete'
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      message: 'Dataset deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error in deleteDataset:', error);
     next(error);
   }
 };
@@ -151,5 +168,6 @@ const getDataset = async (req, res, next) => {
 module.exports = {
   upload,
   uploadDataset,
-  getDataset
+  getDataset,
+  deleteDataset
 };

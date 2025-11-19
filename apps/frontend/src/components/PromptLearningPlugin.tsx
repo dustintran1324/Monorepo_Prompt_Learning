@@ -1,9 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { usePromptLearning } from '../context/PromptLearningContext';
 import { submitAttemptSSE, checkHealth, getTechniques, uploadDataset, getDataset, type PromptingTechnique } from '../services/api';
 import type { DatasetSample } from '../types';
 import styles from '../styles/PluginWindow.module.css';
+
+// Color palette for dynamic label colors
+const LABEL_COLORS = [
+  { bg: '#e8f5e8', text: '#2d5a2d' }, // green
+  { bg: '#ffe8e8', text: '#8b2635' }, // red
+  { bg: '#e8f0ff', text: '#1e40af' }, // blue
+  { bg: '#fff3e8', text: '#9a3412' }, // orange
+  { bg: '#f3e8ff', text: '#6b21a8' }, // purple
+  { bg: '#e8fff3', text: '#065f46' }, // teal
+  { bg: '#fff8e8', text: '#92400e' }, // amber
+  { bg: '#ffe8f3', text: '#9d174d' }, // pink
+];
+
+// Get consistent color for a label based on its index in unique labels
+const getLabelColor = (label: string, uniqueLabels: string[]) => {
+  const index = uniqueLabels.indexOf(label);
+  return LABEL_COLORS[index % LABEL_COLORS.length];
+};
 
 const SAMPLE_DATASET: DatasetSample[] = [
   { text: "Miami-Dade orders coastal evacuation as Hurricane Irma threatens CLICK BELOW FOR FULL STORY", label: "humanitarian" },
@@ -42,6 +60,12 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
   const [techniques, setTechniques] = useState<PromptingTechnique[]>([]);
   const [customDataset, setCustomDataset] = useState<DatasetSample[]>([]);
   const [isUploadingDataset, setIsUploadingDataset] = useState(false);
+
+  // Compute unique labels for color assignment
+  const uniqueLabels = useMemo(() => {
+    const dataset = customDataset.length > 0 ? customDataset : SAMPLE_DATASET;
+    return [...new Set(dataset.map(item => item.label))];
+  }, [customDataset]);
 
   const checkBackendHealth = async () => {
     try {
@@ -213,7 +237,15 @@ export function PromptLearningPlugin({ onClose }: PromptLearningPluginProps) {
                   <tr key={index}>
                     <td>{item.text}</td>
                     <td>
-                      <span className={item.label === 'humanitarian' ? styles.labelHumanitarian : styles.labelNotHumanitarian}>
+                      <span style={{
+                        backgroundColor: getLabelColor(item.label, uniqueLabels).bg,
+                        color: getLabelColor(item.label, uniqueLabels).text,
+                        fontWeight: 'bold',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        display: 'inline-block'
+                      }}>
                         {item.label}
                       </span>
                     </td>
