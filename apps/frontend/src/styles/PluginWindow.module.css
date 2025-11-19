@@ -113,7 +113,7 @@
 }
 
 .promptSection {
-  background: #f8f9fa;
+  background: #ffffff;
 }
 
 .promptForm {
@@ -141,16 +141,16 @@
 
 .promptInput {
   width: 100%;
-  min-height: 100px;
+  min-height: 120px;
   padding: 16px;
   border: 2px solid #ddd;
   border-radius: 8px;
   font-size: 14px;
   font-family: 'Inter', sans-serif;
-  background-color: #ffffff;
+  background-color: #fafafa;
   color: #000000;
   resize: vertical;
-  transition: border-color 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s;
   box-sizing: border-box;
 }
 
@@ -158,6 +158,7 @@
   outline: none;
   border-color: #999999;
   box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.05);
+  background-color: #ffffff;
 }
 
 .promptInput::placeholder {
@@ -271,6 +272,48 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   max-width: 100%;
+  text-align: left;
+}
+
+.feedbackText p {
+  text-align: left;
+  margin: 0 0 12px 0;
+}
+
+.feedbackText p:last-child {
+  margin-bottom: 0;
+}
+
+.feedbackText ul,
+.feedbackText ol {
+  text-align: left;
+  padding-left: 20px;
+  margin: 0 0 12px 0;
+}
+
+.feedbackText li {
+  text-align: left;
+  margin-bottom: 4px;
+}
+
+.feedbackText h1,
+.feedbackText h2,
+.feedbackText h3,
+.feedbackText h4 {
+  text-align: left;
+  margin: 16px 0 8px 0;
+  font-weight: 600;
+}
+
+.feedbackText code {
+  background: #e2e8f0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.feedbackText strong {
+  font-weight: 600;
 }
 
 .uploadButton {
